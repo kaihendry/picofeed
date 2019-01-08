@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,6 +16,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
@@ -61,7 +67,35 @@ func main() {
 	}
 
 	posts := fetchAll(ctx, feeds)
-	renderHtml(os.Stdout, posts, "Jan 2006")
+
+	var output bytes.Buffer
+	foo := bufio.NewWriter(&output)
+	renderHtml(foo, posts, "Jan 2006")
+	foo.Flush()
+
+	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("mine"))
+	if err != nil {
+		panic(err)
+	}
+	cfg.Region = endpoints.ApSoutheast1RegionID
+	// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/s3
+	svc := s3.New(cfg)
+
+	putparams := &s3.PutObjectInput{
+		Bucket:      aws.String("hendry.iki.fi"),
+		Body:        aws.ReadSeekCloser(bytes.NewReader(output.Bytes())),
+		Key:         aws.String("feeds/index.html"),
+		ACL:         s3.ObjectCannedACLPublicRead,
+		ContentType: aws.String("text/html; charset=UTF-8"),
+	}
+
+	req := svc.PutObjectRequest(putparams)
+	_, err = req.Send()
+
+	if err != nil {
+		panic(err)
+	}
+
 }
 
 func render(posts []*Post, dateFormat string) {

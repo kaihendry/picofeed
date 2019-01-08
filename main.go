@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
-	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 	flag "github.com/spf13/pflag"
 )
@@ -62,22 +61,7 @@ func main() {
 	}
 
 	posts := fetchAll(ctx, feeds)
-	if *web {
-		f, err := ioutil.TempFile("", "picoweb.*.html")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to make temp file: %v", err)
-			os.Exit(1)
-		}
-		defer f.Close()
-
-		renderHtml(f, posts, "Jan 2006")
-
-		_ = browser.OpenFile(f.Name())
-	} else if *html {
-		renderHtml(os.Stdout, posts, "Jan 2006")
-	} else {
-		render(posts, "Jan 2006")
-	}
+	renderHtml(os.Stdout, posts, "Jan 2006")
 }
 
 func render(posts []*Post, dateFormat string) {

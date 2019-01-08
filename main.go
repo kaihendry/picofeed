@@ -1,4 +1,4 @@
-package main
+package picofeed
 
 import (
 	"bufio"
@@ -22,37 +22,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
-	flag "github.com/spf13/pflag"
 )
 
 const VERSION = "1.1"
 const FETCH_TIMEOUT = 10 * time.Second
 
-var (
-	html = flag.Bool("html", true, "Render feed as html to stdout")
-	web  = flag.Bool("web", false, "Display feed in browser")
-)
-
-func init() {
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `Usage:
-  picofeed takes feed urls or files of newline separated urls
-
-  Examples:
-	picofeed feeds.txt --web
-	picofeed http://seenaburns.com/feed.xml
-	picofeed http://seenaburns.com/feed.xml feeds.txt http://example.com/feed.xml
-
-  Flags:
-`)
-		flag.PrintDefaults()
-	}
-
-	flag.ErrHelp = errors.New("")
-}
-
-func main() {
-	ctx := context.Background()
+// Refresh fetches the feeds in feeds.txt and puts them upon hendry.iki.fi/feeds/index.html
+func Refresh(ctx context.Context) error {
 
 	feedsList := []string{"feeds.txt"}
 
@@ -60,8 +36,7 @@ func main() {
 	for _, f := range feedsList {
 		newFeeds, err := parseFeedArg(f)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Couldn't parse %q as a url or a file of newline separated urls: %v\n", f, err)
-			os.Exit(1)
+			return err
 		}
 		feeds = append(feeds, newFeeds...)
 	}
@@ -75,7 +50,7 @@ func main() {
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("mine"))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	cfg.Region = endpoints.ApSoutheast1RegionID
 	// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/s3
@@ -93,8 +68,10 @@ func main() {
 	_, err = req.Send()
 
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 
 }
 

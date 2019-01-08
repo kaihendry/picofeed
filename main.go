@@ -24,7 +24,7 @@ const VERSION = "1.1"
 const FETCH_TIMEOUT = 10 * time.Second
 
 var (
-	html = flag.Bool("html", false, "Render feed as html to stdout")
+	html = flag.Bool("html", true, "Render feed as html to stdout")
 	web  = flag.Bool("web", false, "Display feed in browser")
 )
 
@@ -49,19 +49,7 @@ func init() {
 func main() {
 	ctx := context.Background()
 
-	flag.Parse()
-
-	feedsList := flag.Args()
-	if len(feedsList) == 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: No feed provided\n\n")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	if feedsList[0] == "version" {
-		fmt.Fprintf(os.Stderr, "%s\n", VERSION)
-		return
-	}
+	feedsList := []string{"feeds.txt"}
 
 	feeds := []*url.URL{}
 	for _, f := range feedsList {

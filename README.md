@@ -1,3 +1,7 @@
+<img src="https://s.natalian.org/2019-01-08/1546958296_1534x1406.png" alt="Run daily by lambda">
+<img src="https://s.natalian.org/2019-01-08/1546958429_2560x1440.png" alt="Tested with CW events">
+<img src="https://s.natalian.org/2019-01-08/1546958519_1534x1406.png" alt="S3 permissions">
+
 # Picofeed
 
 Picofeed is a minimal terminal rss reader. It takes feed urls direct or files

@@ -2,7 +2,7 @@
   "name": "mobilefeeds",
   "profile": "mine",
   "memory": 128,
-  "timeout": 60,
+  "timeout": 120,
   "role": "arn:aws:iam::407461997746:role/mobilefeeds_lambda_function",
   "environment": {}
 }

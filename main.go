@@ -42,7 +42,7 @@ func Refresh(ctx context.Context) error {
 
 	posts := fetchAll(ctx, feeds)
 
-	output := bytes.NewBuffer([]byte{})
+	output := &bytes.Buffer{}
 	renderHtml(output, posts, "Jan 2006")
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("mine"))
@@ -54,8 +54,9 @@ func Refresh(ctx context.Context) error {
 	svc := s3.New(cfg)
 
 	putparams := &s3.PutObjectInput{
-		Bucket:      aws.String("hendry.iki.fi"),
-		Body:        aws.ReadSeekCloser(output),
+		Bucket: aws.String("hendry.iki.fi"),
+		Body:   aws.ReadSeekCloser(bytes.NewReader(output.Bytes())),
+		// Body:        aws.ReadSeekCloser(output),
 		Key:         aws.String("feeds/index.html"),
 		ACL:         s3.ObjectCannedACLPublicRead,
 		ContentType: aws.String("text/html; charset=UTF-8"),

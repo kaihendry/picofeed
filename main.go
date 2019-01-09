@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
 	"github.com/aws/aws-sdk-go-v2/aws/external"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
 )
@@ -53,17 +54,15 @@ func Refresh(ctx context.Context) error {
 	// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/s3
 	svc := s3.New(cfg)
 
-	putparams := &s3.PutObjectInput{
-		Bucket: aws.String("hendry.iki.fi"),
-		Body:   aws.ReadSeekCloser(bytes.NewReader(output.Bytes())),
-		// Body:        aws.ReadSeekCloser(output),
+	uploader := s3manager.NewUploaderWithClient(svc)
+
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket:      aws.String("hendry.iki.fi"),
+		Body:        output,
 		Key:         aws.String("feeds/index.html"),
 		ACL:         s3.ObjectCannedACLPublicRead,
 		ContentType: aws.String("text/html; charset=UTF-8"),
-	}
-
-	req := svc.PutObjectRequest(putparams)
-	_, err = req.Send()
+	})
 
 	if err != nil {
 		return err

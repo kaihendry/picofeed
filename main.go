@@ -1,7 +1,6 @@
 package picofeed
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -43,10 +42,8 @@ func Refresh(ctx context.Context) error {
 
 	posts := fetchAll(ctx, feeds)
 
-	var output bytes.Buffer
-	foo := bufio.NewWriter(&output)
-	renderHtml(foo, posts, "Jan 2006")
-	foo.Flush()
+	output := bytes.NewBuffer([]byte{})
+	renderHtml(output, posts, "Jan 2006")
 
 	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("mine"))
 	if err != nil {
@@ -58,7 +55,7 @@ func Refresh(ctx context.Context) error {
 
 	putparams := &s3.PutObjectInput{
 		Bucket:      aws.String("hendry.iki.fi"),
-		Body:        aws.ReadSeekCloser(bytes.NewReader(output.Bytes())),
+		Body:        aws.ReadSeekCloser(output),
 		Key:         aws.String("feeds/index.html"),
 		ACL:         s3.ObjectCannedACLPublicRead,
 		ContentType: aws.String("text/html; charset=UTF-8"),

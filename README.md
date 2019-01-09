@@ -4,6 +4,23 @@ Run at 2AM every day via [CloudWatch Events: 0 2 \* \* ? \*](https://docs.aws.am
 <img src="https://s.natalian.org/2019-01-08/1546958429_2560x1440.png" alt="Tested with CW events">
 <img src="https://s.natalian.org/2019-01-08/1546958519_1534x1406.png" alt="S3 permissions">
 
+## How to setup the Lambda with Apex
+
+Install http://apex.run/ which is a handly Golang project by @tj which I find
+easier than AWS SAM or Serverless project (YAML! YUK), which you could use
+instead.
+
+	export AWS_REGION=ap-southeast-1
+	export AWS_PROFILE=mine
+	apex init
+
+This creates https://github.com/kaihendry/picofeed/blob/master/project.json and
+initialises the IAM role on AWS for you tweak the permissions and such.
+
+Notice [the functions directory](https://github.com/kaihendry/picofeed/tree/master/functions/daily) from which the lambda in invoked from.
+
+I use a [Makefile](https://github.com/kaihendry/picofeed/blob/master/Makefile) to deploy and test my lambda function.
+
 # Picofeed
 
 Picofeed is a minimal terminal rss reader. It takes feed urls direct or files

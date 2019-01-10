@@ -4,5 +4,7 @@
   "memory": 128,
   "timeout": 120,
   "role": "arn:aws:iam::407461997746:role/mobilefeeds_lambda_function",
-  "environment": {}
+  "environment": {
+    "BUCKET": "hendry.iki.fi"
+  }
 }

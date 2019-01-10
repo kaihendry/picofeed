@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,19 +16,52 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/endpoints"
-	"github.com/aws/aws-sdk-go-v2/aws/external"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/mmcdole/gofeed"
 	"github.com/pkg/errors"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/s3blob"
 )
 
 const VERSION = "1.1"
 const FETCH_TIMEOUT = 10 * time.Second
 
-// Refresh fetches the feeds in feeds.txt and puts them upon hendry.iki.fi/feeds/index.html
+// setupAWS creates a connection to Simple Cloud Storage Service (S3).
+func setupAWS(ctx context.Context, bucket string) (b *blob.Bucket, err error) {
+
+	sess := session.New()
+
+	profile := os.Getenv("AWS_PROFILE")
+	if profile == "" {
+		profile = "mine"
+	}
+
+	creds := credentials.NewChainCredentials(
+		[]credentials.Provider{
+			// If you want to set AWS_ACCESS_KEY_ID & AWS_SECRET_ACCESS_KEY envs
+			&credentials.EnvProvider{},
+			// For when I use cmd/
+			&credentials.SharedCredentialsProvider{Filename: "", Profile: profile},
+			// IIUC, this is how IAM role is assumed in the Lambda env
+			&ec2rolecreds.EC2RoleProvider{Client: ec2metadata.New(sess)},
+		})
+
+	cfg := &aws.Config{
+		Region:                        aws.String("ap-southeast-1"),
+		Credentials:                   creds,
+		CredentialsChainVerboseErrors: aws.Bool(true),
+	}
+
+	sess, err = session.NewSession(cfg)
+	b, err = s3blob.OpenBucket(ctx, sess, bucket, nil)
+	return
+}
+
+// Refresh fetches the feeds in feeds.txt and places it on $BUCKET/feeds/index.html
 func Refresh(ctx context.Context) error {
 
 	feedsList := []string{"feeds.txt"}
@@ -46,26 +80,22 @@ func Refresh(ctx context.Context) error {
 	output := &bytes.Buffer{}
 	renderHtml(output, posts, "Jan 2006")
 
-	cfg, err := external.LoadDefaultAWSConfig(external.WithSharedConfigProfile("mine"))
+	// https://github.com/google/go-cloud/tree/master/samples/tutorial
+	b, err := setupAWS(ctx, os.Getenv("BUCKET"))
 	if err != nil {
-		return err
+		log.Fatalf("Failed to setup bucket: %s", err)
 	}
-	cfg.Region = endpoints.ApSoutheast1RegionID
-	// https://godoc.org/github.com/aws/aws-sdk-go-v2/service/s3
-	svc := s3.New(cfg)
 
-	uploader := s3manager.NewUploaderWithClient(svc)
-
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket:      aws.String("hendry.iki.fi"),
-		Body:        output,
-		Key:         aws.String("feeds/index.html"),
-		ACL:         s3.ObjectCannedACLPublicRead,
-		ContentType: aws.String("text/html; charset=UTF-8"),
-	})
-
+	w, err := b.NewWriter(ctx, "feeds/index.html", nil)
 	if err != nil {
-		return err
+		log.Fatalf("Failed to obtain writer: %s", err)
+	}
+	_, err = w.Write(output.Bytes())
+	if err != nil {
+		log.Fatalf("Failed to write to bucket: %s", err)
+	}
+	if err := w.Close(); err != nil {
+		log.Fatalf("Failed to close: %s", err)
 	}
 
 	return nil

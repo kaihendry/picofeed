@@ -86,16 +86,9 @@ func Refresh(ctx context.Context) error {
 		log.Fatalf("Failed to setup bucket: %s", err)
 	}
 
-	w, err := b.NewWriter(ctx, "feeds/index.html", nil)
+	err = b.WriteAll(ctx, "feeds/index.html", output.Bytes(), nil)
 	if err != nil {
-		log.Fatalf("Failed to obtain writer: %s", err)
-	}
-	_, err = w.Write(output.Bytes())
-	if err != nil {
-		log.Fatalf("Failed to write to bucket: %s", err)
-	}
-	if err := w.Close(); err != nil {
-		log.Fatalf("Failed to close: %s", err)
+		log.Fatalf("Failed to write: %s", err)
 	}
 
 	return nil
